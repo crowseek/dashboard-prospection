@@ -1,0 +1,39 @@
+{
+  "agency": "Crowseek",
+  "updated": "2026-09-25",
+  "campaigns": [
+    {
+      "id": "2026-09-barbiers",
+      "name": "Prospection barbiers",
+      "date": "2026-09-20",
+      "channel": "Email",
+      "sent": 120,
+      "seenNoReply": 34,
+      "noReply": 51,
+      "positive": 24,
+      "negative": 11
+    },
+    {
+      "id": "2026-09-restaurants",
+      "name": "Restos & bars",
+      "date": "2026-09-15",
+      "channel": "Instagram DM",
+      "sent": 80,
+      "seenNoReply": 28,
+      "noReply": 30,
+      "positive": 14,
+      "negative": 8
+    },
+    {
+      "id": "2026-08-renovation",
+      "name": "Artisans rénovation",
+      "date": "2026-08-28",
+      "channel": "Email",
+      "sent": 65,
+      "seenNoReply": 15,
+      "noReply": 33,
+      "positive": 12,
+      "negative": 5
+    }
+  ]
+}

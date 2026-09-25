@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crowseek — Suivi de prospection</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a21;
+    --panel-2: #1d212b;
+    --border: #262b36;
+    --text: #e6e8ec;
+    --muted: #9aa3b2;
+    --sent: #5b8cff;
+    --positive: #37c98b;
+    --negative: #f26d6d;
+    --seen: #f2c14e;
+    --none: #6b7280;
+    --radius: 14px;
+    --shadow: 0 6px 24px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    padding: 24px 16px 64px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--sent), #8a5bff);
+    display: grid; place-items: center; font-weight: 800; font-size: 20px;
+    box-shadow: var(--shadow);
+  }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+
+  .btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    padding: 9px 14px; border-radius: 10px; font-size: 13px; cursor: pointer;
+    transition: border-color .15s ease, transform .05s ease;
+  }
+  .btn:hover { border-color: #3a4152; }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--sent); border-color: var(--sent); color: #fff; font-weight: 600; }
+
+  .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; position: relative; overflow: hidden;
+  }
+  .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .kpi .bar { height: 4px; border-radius: 4px; margin-top: 10px; opacity: .9; }
+
+  .rates { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0 20px; }
+  .rate {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 16px; display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .rate .n { font-size: 20px; font-weight: 700; }
+  .rate .l { color: var(--muted); font-size: 12px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .panel h2 { font-size: 14px; margin: 0 0 14px; color: var(--text); font-weight: 600; }
+  .chart-box { position: relative; height: 260px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: right; padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  tbody tr:hover { background: var(--panel-2); }
+  tfoot td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; }
+  .tag { font-size: 11px; color: var(--muted); background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+  .editor { margin-top: 20px; }
+  details.editor > summary {
+    cursor: pointer; color: var(--muted); font-size: 13px; padding: 10px 0; list-style: none;
+  }
+  details.editor > summary::-webkit-details-marker { display: none; }
+  .form-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 12px; }
+  .form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+  .form-grid input, .form-grid select {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 8px; font-size: 13px;
+  }
+  .form-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .del { color: var(--negative); cursor: pointer; font-size: 12px; background: none; border: none; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .banner { display:none; background: rgba(242,193,78,.12); border: 1px solid rgba(242,193,78,.35); color: #f2c14e; padding: 8px 12px; border-radius: 10px; font-size: 12px; margin-bottom: 16px; }
+
+  @media (max-width: 860px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .rates { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div>
+        <h1>Crowseek — Suivi de prospection</h1>
+        <div class="sub" id="subtitle">Chargement…</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="exportBtn">Exporter data.json</button>
+      <label class="btn" for="importFile" style="display:inline-block;">Importer</label>
+      <input id="importFile" type="file" accept="application/json" style="display:none;" />
+    </div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <section class="cards" id="kpis"></section>
+
+  <section class="rates" id="rates"></section>
+
+  <section class="grid">
+    <div class="panel">
+      <h2>Répartition des issues</h2>
+      <div class="chart-box"><canvas id="donut"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Entonnoir (envoyés → positifs)</h2>
+      <div class="chart-box"><canvas id="funnel"></canvas></div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-bottom:16px;">
+    <h2>Détail par campagne</h2>
+    <div class="chart-box" style="height:280px;"><canvas id="stacked"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <h2>Campagnes</h2>
+    <div style="overflow-x:auto;">
+      <table id="table">
+        <thead>
+          <tr>
+            <th>Campagne</th><th>Date</th><th>Canal</th>
+            <th>Envoyés</th><th>Vus s/ réponse</th><th>Sans réponse</th>
+            <th>Positives</th><th>Négatives</th><th>Taux rép.</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot id="tfoot"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <details class="editor">
+    <summary>➕ Ajouter / modifier une campagne</summary>
+    <div class="form-grid">
+      <label>Nom<input id="f-name" type="text" placeholder="Prospection barbiers" /></label>
+      <label>Date<input id="f-date" type="date" /></label>
+      <label>Canal
+        <select id="f-channel">
+          <option>Email</option><option>Instagram DM</option><option>LinkedIn</option>
+          <option>SMS</option><option>Téléphone</option><option>Autre</option>
+        </select>
+      </label>
+      <label>Envoyés<input id="f-sent" type="number" min="0" value="0" /></label>
+      <label>Vus sans réponse<input id="f-seen" type="number" min="0" value="0" /></label>
+      <label>Sans réponse<input id="f-none" type="number" min="0" value="0" /></label>
+      <label>Réponses positives<input id="f-pos" type="number" min="0" value="0" /></label>
+      <label>Réponses négatives<input id="f-neg" type="number" min="0" value="0" /></label>
+    </div>
+    <div class="form-actions">
+      <button class="btn primary" id="addBtn">Enregistrer la campagne</button>
+      <span class="hint">Astuce : Envoyés = Vus + Sans réponse + Positives + Négatives. Le total est vérifié automatiquement.</span>
+    </div>
+    <p class="hint">Les modifications restent en mémoire dans cette page. Clique sur <b>Exporter data.json</b> puis remplace le fichier <code>data.json</code> dans ton repo pour les publier.</p>
+  </details>
+</div>
+
+<script>
+"use strict";
+
+// ---- Données de secours (utilisées si data.json est absent, ex. aperçu local) ----
+const SEED = {
+  agency: "Crowseek",
+  updated: "2026-09-25",
+  campaigns: [
+    { id: "demo-1", name: "Prospection barbiers", date: "2026-09-20", channel: "Email",
+      sent: 120, seenNoReply: 34, noReply: 51, positive: 24, negative: 11 },
+    { id: "demo-2", name: "Restos & bars", date: "2026-09-15", channel: "Instagram DM",
+      sent: 80, seenNoReply: 28, noReply: 30, positive: 14, negative: 8 }
+  ]
+};
+
+const COLORS = {
+  sent: "#5b8cff", seen: "#f2c14e", none: "#6b7280", positive: "#37c98b", negative: "#f26d6d"
+};
+
+let state = { agency: "Crowseek", updated: "", campaigns: [] };
+let charts = {};
+
+// ---- Chargement : essaie data.json, sinon SEED ----
+async function load() {
+  try {
+    const res = await fetch("./data.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("no file");
+    const data = await res.json();
+    state = normalize(data);
+  } catch (e) {
+    state = normalize(SEED);
+    showBanner("Aperçu avec des données de démonstration (data.json introuvable). Sur GitHub Pages, les vrais chiffres seront chargés.");
+  }
+  render();
+}
+
+function normalize(d) {
+  return {
+    agency: d.agency || "Crowseek",
+    updated: d.updated || "",
+    campaigns: (d.campaigns || []).map((c, i) => ({
+      id: c.id || ("c" + i + "-" + Date.now()),
+      name: c.name || "Sans nom",
+      date: c.date || "",
+      channel: c.channel || "Autre",
+      sent: +c.sent || 0,
+      seenNoReply: +c.seenNoReply || 0,
+      noReply: +c.noReply || 0,
+      positive: +c.positive || 0,
+      negative: +c.negative || 0
+    }))
+  };
+}
+
+function totals() {
+  return state.campaigns.reduce((t, c) => ({
+    sent: t.sent + c.sent,
+    seenNoReply: t.seenNoReply + c.seenNoReply,
+    noReply: t.noReply + c.noReply,
+    positive: t.positive + c.positive,
+    negative: t.negative + c.negative
+  }), { sent: 0, seenNoReply: 0, noReply: 0, positive: 0, negative: 0 });
+}
+
+const pct = (n, d) => d > 0 ? Math.round((n / d) * 1000) / 10 : 0;
+
+// ---- Rendu ----
+function render() {
+  const t = totals();
+  document.getElementById("subtitle").textContent =
+    `${state.campaigns.length} campagne(s) · ${t.sent} messages envoyés` +
+    (state.updated ? ` · maj ${state.updated}` : "");
+
+  renderKpis(t);
+  renderRates(t);
+  renderCharts(t);
+  renderTable(t);
+}
+
+function renderKpis(t) {
+  const items = [
+    { label: "Envoyés", value: t.sent, color: COLORS.sent },
+    { label: "Vus sans réponse", value: t.seenNoReply, color: COLORS.seen },
+    { label: "Sans réponse", value: t.noReply, color: COLORS.none },
+    { label: "Rép. positives", value: t.positive, color: COLORS.positive },
+    { label: "Rép. négatives", value: t.negative, color: COLORS.negative }
+  ];
+  document.getElementById("kpis").innerHTML = items.map(i => `
+    <div class="kpi">
+      <div class="label">${i.label}</div>
+      <div class="value">${i.value}</div>
+      <div class="bar" style="background:${i.color}"></div>
+    </div>`).join("");
+}
+
+function renderRates(t) {
+  const replies = t.positive + t.negative;
+  const read = t.seenNoReply + replies;
+  const items = [
+    { l: "Taux de lecture", n: pct(read, t.sent) + " %" },
+    { l: "Taux de réponse", n: pct(replies, t.sent) + " %" },
+    { l: "Taux de conversion", n: pct(t.positive, t.sent) + " %" },
+    { l: "Positif / réponses", n: pct(t.positive, replies) + " %" }
+  ];
+  document.getElementById("rates").innerHTML = items.map(i => `
+    <div class="rate"><span class="l">${i.l}</span><span class="n">${i.n}</span></div>`).join("");
+}
+
+function renderCharts(t) {
+  Object.values(charts).forEach(c => c && c.destroy());
+  Chart.defaults.color = "#9aa3b2";
+  Chart.defaults.font.family = "system-ui, sans-serif";
+
+  charts.donut = new Chart(document.getElementById("donut"), {
+    type: "doughnut",
+    data: {
+      labels: ["Positives", "Négatives", "Vus sans réponse", "Sans réponse"],
+      datasets: [{
+        data: [t.positive, t.negative, t.seenNoReply, t.noReply],
+        backgroundColor: [COLORS.positive, COLORS.negative, COLORS.seen, COLORS.none],
+        borderColor: "#171a21", borderWidth: 3
+      }]
+    },
+    options: { cutout: "62%", plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 14 } } } }
+  });
+
+  const replies = t.positive + t.negative;
+  const read = t.seenNoReply + replies;
+  charts.funnel = new Chart(document.getElementById("funnel"), {
+    type: "bar",
+    data: {
+      labels: ["Envoyés", "Lus", "Répondu", "Positif"],
+      datasets: [{
+        data: [t.sent, read, replies, t.positive],
+        backgroundColor: [COLORS.sent, COLORS.seen, "#8a5bff", COLORS.positive],
+        borderRadius: 8, barPercentage: 0.7
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { color: "#262b36" }, beginAtZero: true }, y: { grid: { display: false } } }
+    }
+  });
+
+  charts.stacked = new Chart(document.getElementById("stacked"), {
+    type: "bar",
+    data: {
+      labels: state.campaigns.map(c => c.name),
+      datasets: [
+        { label: "Positives", data: state.campaigns.map(c => c.positive), backgroundColor: COLORS.positive },
+        { label: "Négatives", data: state.campaigns.map(c => c.negative), backgroundColor: COLORS.negative },
+        { label: "Vus sans réponse", data: state.campaigns.map(c => c.seenNoReply), backgroundColor: COLORS.seen },
+        { label: "Sans réponse", data: state.campaigns.map(c => c.noReply), backgroundColor: COLORS.none }
+      ]
+    },
+    options: {
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 14 } } },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, grid: { color: "#262b36" }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderTable(t) {
+  const dotSpan = "";
+  document.getElementById("tbody").innerHTML = state.campaigns.map(c => {
+    const rep = pct(c.positive + c.negative, c.sent);
+    return `<tr>
+      <td>${escapeHtml(c.name)}</td>
+      <td>${c.date || "—"}</td>
+      <td><span class="tag">${escapeHtml(c.channel)}</span></td>
+      <td>${c.sent}</td>
+      <td><span class="dot" style="background:${COLORS.seen}"></span>${c.seenNoReply}</td>
+      <td><span class="dot" style="background:${COLORS.none}"></span>${c.noReply}</td>
+      <td><span class="dot" style="background:${COLORS.positive}"></span>${c.positive}</td>
+      <td><span class="dot" style="background:${COLORS.negative}"></span>${c.negative}</td>
+      <td>${rep} %</td>
+      <td><button class="del" data-id="${c.id}" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">Aucune campagne. Ajoute-en une ci-dessous.</td></tr>`;
+
+  document.getElementById("tfoot").innerHTML = `
+    <tr>
+      <td>Total</td><td></td><td></td>
+      <td>${t.sent}</td><td>${t.seenNoReply}</td><td>${t.noReply}</td>
+      <td>${t.positive}</td><td>${t.negative}</td>
+      <td>${pct(t.positive + t.negative, t.sent)} %</td><td></td>
+    </tr>`;
+
+  document.querySelectorAll(".del").forEach(b =>
+    b.addEventListener("click", () => { removeCampaign(b.dataset.id); }));
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+}
+
+// ---- Édition (en mémoire) ----
+function addCampaign() {
+  const g = id => document.getElementById(id);
+  const name = g("f-name").value.trim();
+  if (!name) { alertBanner("Donne un nom à la campagne."); return; }
+  const c = {
+    id: "c" + Date.now(),
+    name,
+    date: g("f-date").value || new Date().toISOString().slice(0, 10),
+    channel: g("f-channel").value,
+    sent: +g("f-sent").value || 0,
+    seenNoReply: +g("f-seen").value || 0,
+    noReply: +g("f-none").value || 0,
+    positive: +g("f-pos").value || 0,
+    negative: +g("f-neg").value || 0
+  };
+  const sum = c.seenNoReply + c.noReply + c.positive + c.negative;
+  if (c.sent && sum !== c.sent) {
+    showBanner(`Attention : la somme des issues (${sum}) ≠ envoyés (${c.sent}). Campagne enregistrée quand même.`);
+  }
+  state.campaigns.unshift(c);
+  ["f-name","f-sent","f-seen","f-none","f-pos","f-neg"].forEach(i => g(i).value = i === "f-name" ? "" : "0");
+  render();
+}
+
+function removeCampaign(id) {
+  state.campaigns = state.campaigns.filter(c => c.id !== id);
+  render();
+}
+
+function exportJson() {
+  state.updated = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "data.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importJson(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { state = normalize(JSON.parse(reader.result)); render(); showBanner("Fichier importé."); }
+    catch (e) { alertBanner("JSON invalide."); }
+  };
+  reader.readAsText(file);
+}
+
+let bannerTimer;
+function showBanner(msg) {
+  const b = document.getElementById("banner");
+  b.textContent = msg; b.style.display = "block";
+}
+function alertBanner(msg) {
+  showBanner(msg);
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { document.getElementById("banner").style.display = "none"; }, 4000);
+}
+
+// ---- Événements ----
+document.getElementById("addBtn").addEventListener("click", addCampaign);
+document.getElementById("exportBtn").addEventListener("click", exportJson);
+document.getElementById("importFile").addEventListener("change", e => {
+  if (e.target.files[0]) importJson(e.target.files[0]);
+});
+
+load();
+</script>
+</body>
+</html>
