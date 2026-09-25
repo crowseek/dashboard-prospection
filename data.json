@@ -4,14 +4,14 @@
   "campaigns": [
     {
       "id": "2026-09-barbiers",
-      "name": "Prospection barbiers",
+      "name": "Prospection photographe",
       "date": "2026-09-20",
-      "channel": "Email",
-      "sent": 120,
-      "seenNoReply": 34,
-      "noReply": 51,
-      "positive": 24,
-      "negative": 11
+      "channel": "SMS",
+      "sent": 19,
+      "seenNoReply": 11,
+      "noReply": 6,
+      "positive": 2,
+      "negative": 0
     },
     {
       "id": "2026-09-restaurants",
